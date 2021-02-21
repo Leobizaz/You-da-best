@@ -200,7 +200,7 @@ public class PlayerController : MonoBehaviour
 
                 Vector2 dir = new Vector2(x, y);
                 rb.velocity += new Vector2(dir.x * speed, 0);
-                rb.velocity = new Vector2(Mathf.Clamp(rb.velocity.x, -5, 5), rb.velocity.y);
+                rb.velocity = new Vector2(Mathf.Clamp(rb.velocity.x, -speed, speed), rb.velocity.y);
             }
         }
     }
