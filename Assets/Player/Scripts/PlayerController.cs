@@ -46,9 +46,9 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (transform.position.y < -5)
+        if (transform.position.y < -20)
         {
-            transform.position = new Vector3(0, -2, 0);
+            transform.position = new Vector3(0, -2, 4.102344f);
         }
     }
 
