@@ -24,11 +24,12 @@ public class RoboSerra : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        hp.GetComponentInParent<EnemyHealth>();
+        hp = GetComponentInParent<EnemyHealth>();
     }
 
     private void OnEnable()
     {
+        transform.position = startPosition;
         rb.MovePosition(startPosition);
         target = GameObject.FindGameObjectWithTag("Player");
         hp.currentHP = hp.maxHP;

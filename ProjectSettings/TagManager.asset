@@ -7,6 +7,7 @@ TagManager:
   - Ground
   - Wall
   - PlayerProjectile
+  - Inimigo
   layers:
   - Default
   - TransparentFX
@@ -20,8 +21,8 @@ TagManager:
   - PlayerCollider
   - Wall
   - PlayerProjectile
-  - 
-  - 
+  - Inimigo
+  - Harm
   - 
   - 
   - 
@@ -43,4 +44,10 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Player
+    uniqueID: 2204064499
+    locked: 0
+  - name: Inimigos
+    uniqueID: 3765090857
     locked: 0
