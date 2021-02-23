@@ -10,6 +10,9 @@ public class PlayerController : MonoBehaviour
     public float jumpForce = 5;
     public float acceleration = 0.04f;
     public float decceleration = 0.01f;
+    public float maxHP = 100;
+    public float currentHP = 0;
+    public float invulFrame = 1;
     //variaveis privadas
     private bool wantToJump;
     private bool isMoving;
@@ -19,15 +22,21 @@ public class PlayerController : MonoBehaviour
     public float x = 0;
     private float y = 0;
     private float yVelocity;
+    private float dVelocity;
     private float jumpCooldown;
     private bool jumpBlock;
     bool walljumping;
     bool movimentionBlock;
     bool m_blockLeft;
     bool m_blockRight;
+    bool dashing;
+    float hitcooldown;
     //referencias publicas
     public GameObject playerRenderer;
+    public ParticleSystem DashRightFX;
+    public ParticleSystem DashLeftFX;
     //referencias privadas
+    PlayerHUD hud;
     Animator renderAnimator;
     Rigidbody2D rb;
     PlayerCollision playerCollision;
@@ -37,11 +46,12 @@ public class PlayerController : MonoBehaviour
         renderAnimator = playerRenderer.GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         playerCollision = GetComponent<PlayerCollision>();
+        hud = GetComponent<PlayerHUD>();
     }
 
     private void Start()
     {
-        
+        currentHP = maxHP;
     }
 
     private void Update()
@@ -50,6 +60,9 @@ public class PlayerController : MonoBehaviour
         {
             transform.position = new Vector3(0, -2, 4.102344f);
         }
+
+        if (hitcooldown > 0) hitcooldown -= Time.deltaTime;
+
     }
 
     private void FixedUpdate()
@@ -62,10 +75,80 @@ public class PlayerController : MonoBehaviour
         RenderRotation();
     }
 
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if(collision.tag == "Harm")
+        {
+            if(hitcooldown <= 0)
+            {
+                TakeDamage(collision.gameObject);
+            }
+        }
+    }
+
+    public void TakeDamage(GameObject source)
+    {
+        rb.AddRelativeForce(source.transform.forward * 2);
+        currentHP -= 10;
+        hud.SetHPBarValue(currentHP / 100);
+        hitcooldown = invulFrame;
+        ShakeCamera.current.Shake(0.3f, 2, 2);
+    }
+
     private void LateUpdate()
     {
         Pulo();
+        Dash();
         Walljump();
+    }
+
+    void Dash()
+    {
+        if (Input.GetKeyDown(KeyCode.LeftShift) && isMoving)
+        {
+            if (facingRight)
+            {
+                Debug.Log("DashRight");
+                dashing = true;
+                rb.AddForce(new Vector2(5, 0));
+                DashRightFX.Play();
+                if (playerCollision.onAir)
+                {
+                    Invoke("CancelDashRight", 0.1f);
+                }
+                else
+                {
+                    Invoke("CancelDashRight", 0.2f);
+                }
+            }
+            if (facingLeft)
+            {
+                Debug.Log("DashLeft");
+                dashing = true;
+                rb.AddForce(new Vector2(-5, 0));
+                DashLeftFX.Play();
+                if (playerCollision.onAir)
+                {
+                    Invoke("CancelDashLeft", 0.1f);
+                }
+                else
+                {
+                    Invoke("CancelDashLeft", 0.2f);
+                }
+            }
+        }
+    }
+
+    void CancelDashRight()
+    {
+        rb.AddForce(new Vector2(-4, 0));
+        dashing = false;
+    }
+
+    void CancelDashLeft()
+    {
+        rb.AddForce(new Vector2(4, 0));
+        dashing = false;
     }
 
     private void Pulo()
@@ -88,7 +171,6 @@ public class PlayerController : MonoBehaviour
             jumpCooldown = jumpCooldown - Time.deltaTime;
         }
     }
-
     void Walljump()
     {
         if (Input.GetButtonDown("Jump"))
@@ -97,7 +179,7 @@ public class PlayerController : MonoBehaviour
             {
                 if (playerCollision.onAir && playerCollision.onWallRight)
                 {
-                    walljumping = true;
+                    //walljumping = true;
                     playerCollision.onGroundCoyote = false;
                     wantToJump = false;
                     rb.velocity = new Vector2(rb.velocity.x, 0); //reset
@@ -109,7 +191,7 @@ public class PlayerController : MonoBehaviour
                 }
                 if (playerCollision.onAir && playerCollision.onWallLeft)
                 {
-                    walljumping = true;
+                    //walljumping = true;
                     playerCollision.onGroundCoyote = false;
                     wantToJump = false;
                     rb.velocity = new Vector2(rb.velocity.x, 0); //reset
@@ -123,14 +205,12 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-
     void ResetWalljump()
     {
         walljumping = false;
-        x = 0;
+        //x = 0;
         y = 0;
     }
-
     private void Movimentação()
     {
         if (rb.velocity.x <= 0 && isMoving)
@@ -155,10 +235,10 @@ public class PlayerController : MonoBehaviour
             if (playerCollision.onGround || playerCollision.onGroundCoyote)
             {
 
-            if (Input.GetAxisRaw("Horizontal") != 0)
-            {
-                isMoving = true;
-                x = Mathf.SmoothDamp(x, Input.GetAxis("Horizontal"), ref yVelocity, acceleration);
+                if (Input.GetAxisRaw("Horizontal") != 0)
+                {
+                    isMoving = true;
+                    x = Mathf.SmoothDamp(x, Input.GetAxis("Horizontal"), ref yVelocity, acceleration);
                     if (m_blockLeft)
                     {
                         x = Mathf.Clamp(x, 0, 1);
@@ -167,17 +247,18 @@ public class PlayerController : MonoBehaviour
                     {
                         x = Mathf.Clamp(x, -1, 0);
                     }
-            }
-            else
-            {
-                isMoving = false;
-                x = Mathf.SmoothDamp(x, Input.GetAxis("Horizontal"), ref yVelocity, decceleration);
-            }
+                }
+                else
+                {
+                    isMoving = false;
+                    x = Mathf.SmoothDamp(x, Input.GetAxis("Horizontal"), ref dVelocity, decceleration);
+                }
 
-            Vector2 dir = new Vector2(x, y);
-            rb.velocity = new Vector2(dir.x * speed, rb.velocity.y);
+                rb.velocity = new Vector2(x * speed, rb.velocity.y);
+
+
             }
-            else
+            else         /////////////////////////////////////////////////////////////
             {
                 if (Input.GetAxisRaw("Horizontal") != 0)
                 {
@@ -195,16 +276,22 @@ public class PlayerController : MonoBehaviour
                 else
                 {
                     isMoving = false;
-                    x = Mathf.SmoothDamp(x, Input.GetAxis("Horizontal"), ref yVelocity, decceleration);
+                    //x = Mathf.SmoothDamp(x, Input.GetAxis("Horizontal"), ref dVelocity, decceleration);
+                    x = 0;
                 }
 
-                Vector2 dir = new Vector2(x, y);
-                rb.velocity += new Vector2(dir.x * speed, 0);
+
+            }
+
+            Vector2 dir = new Vector2(x, y);
+            rb.velocity += new Vector2(dir.x * speed, 0);
+            if (!dashing)
+            {
                 rb.velocity = new Vector2(Mathf.Clamp(rb.velocity.x, -speed, speed), rb.velocity.y);
             }
+
         }
     }
-
     private void Jump()
     {
         //playerCollision.coyote = true;
@@ -216,17 +303,14 @@ public class PlayerController : MonoBehaviour
         Invoke("ResetJumpBlock", 0.4f);
         hasSquashed = false;
     }
-
     void ResetJumpBlock()
     {
         jumpBlock = false;
     }
-
     void ResetWantToJump()
     {
         wantToJump = false;
     }
-
     void RenderRotation()
     {
 
@@ -253,7 +337,6 @@ public class PlayerController : MonoBehaviour
         }
 
     }
-
     void SquashStretch()
     {
         if (!jumpBlock)
@@ -268,7 +351,6 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-
     void Cu()
     {
         renderAnimator.enabled = false;
